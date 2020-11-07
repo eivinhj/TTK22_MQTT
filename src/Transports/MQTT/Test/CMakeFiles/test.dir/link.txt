@@ -1,0 +1,1 @@
+/usr/bin/c++    -rdynamic CMakeFiles/test.dir/test.cpp.o  -o test -lpaho-mqttpp3 -lpaho-mqtt3as 

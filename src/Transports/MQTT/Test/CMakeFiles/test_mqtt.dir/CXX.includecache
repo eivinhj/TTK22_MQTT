@@ -1,0 +1,12 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/bts/dune/source/src/Transports/MQTT/Test/test.cpp
+mqtt/async_client.h
+/home/bts/dune/source/src/Transports/MQTT/Test/mqtt/async_client.h
+
