@@ -61,7 +61,7 @@ sudo ldconfig
 Start mosquitto MQTT broker:
 
 ```
-mosquitto -v -p #port
+mosquitto -v -p 2023
 ```
 
 
