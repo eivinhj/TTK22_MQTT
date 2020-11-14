@@ -2,7 +2,7 @@ MQTT: Message Queuing Telemetry Transport
 ======================================
 
 
-Install requirements:
+## Install requirements
 
 
 
@@ -14,9 +14,10 @@ sudo apt-get install libssl-dev
 sudo apt-get install mosquitto
 ```
 
+## Paho MQTT C Library
+Navigate to Lib/paho.mqtt.c
 
-
-Download the Paho MQTT C-library from https://github.com/eclipse/paho.mqtt.c
+The Paho MQTT C-library is also available to download from https://github.com/eclipse/paho.mqtt.c 
 
 Install with:
 
@@ -37,13 +38,9 @@ Documentation can be generated with:
 	make html
 ```
 
-
-
-
-
-Download the Paho MQTT C++-library from
-
-https://github.com/eclipse/paho.mqtt.cpp
+## Paho MQTT C++ Library
+Navigate to Lib/paho.mqtt.c
+The Paho MQTT C++-library is also available to download from https://github.com/eclipse/paho.mqtt.cpp 
 
 Install with:
 
@@ -59,7 +56,7 @@ sudo ldconfig
 
 
 
-At runtime:
+## Test that it works
 
 Start mosquitto MQTT broker:
 
@@ -67,9 +64,6 @@ Start mosquitto MQTT broker:
 mosquitto -v -p #port
 ```
 
-
-
-Test:
 
 Navigate to dune/build folder.
 
