@@ -24,38 +24,26 @@
 // https://github.com/LSTS/dune/blob/master/LICENCE.md and                  *
 // http://ec.europa.eu/idabc/eupl.html.                                     *
 //***************************************************************************
-// Author: Eivind Jolsgard                                                  *
+// Author: Eivind Jølsgard                                                 *
 //***************************************************************************
-
-// ISO C++ 98 headers.
-#include <cstddef>
 
 // DUNE headers.
 #include <DUNE/DUNE.hpp>
-
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <cstring>
-#include <cctype>
-#include <thread>
-#include <chrono>
-#include <atomic>
 #include <mqtt/async_client.h>
-
-
 
 namespace Transports
 {
+  //! Insert short task description here.
+  //!
+  //! Insert explanation on task behaviour here.
+  //! @author Eivind Jølsgard
   namespace MQTT
   {
-
-
-    namespace Client
+    namespace SimpleTest
     {
       using DUNE_NAMESPACES;
 
-      //test
+            //test
       const std::string DEFAULT_SERVER_ADDRESS	{ "tcp://localhost:2312" }; //TODO Change this for server
       const std::string DEFAULT_CLIENT_ID		    { "client 1"};
 
@@ -66,9 +54,7 @@ namespace Transports
       mqtt::async_client* mqtt_client; // = &mqtt_client_test;
       auto timeout = std::chrono::seconds(10);
 
-
-
-      struct Arguments
+       struct Arguments
       {
         Address address; // Server address.
         int port; // Server port.
@@ -79,25 +65,26 @@ namespace Transports
         int  QOS; //Quality of service
       };
 
-      struct Task: public Tasks::SimpleTransport
+      struct Task: public DUNE::Tasks::Task
       {
         // Task arguments.
         Arguments m_args;
-        // Socket handle.
-        TCPSocket* m_sock;
         // Parser handle.
         IMC::Parser m_parser;
-
+        DUNE::Utils::ByteBuffer m_buf;
+        //! Constructor.
+        //! @param[in] name task name.
+        //! @param[in] ctx context.
         Task(const std::string& name, Tasks::Context& ctx):
-          Tasks::SimpleTransport(name, ctx),
-          m_sock(NULL)
+          DUNE::Tasks::Task(name, ctx)
         {
+
           param("Address", m_args.address)
           .defaultValue("tcp://localhost")
           .description("MQTT broker address");
 
           param("Subscribe topic", m_args.subscribe_topic)
-          .defaultValue("toVeichle")
+          .defaultValue("toServer")
           .description("MQTT Subscribe topic");
 
           param("Port", m_args.port)
@@ -105,7 +92,7 @@ namespace Transports
           .description("MQTT broker port");
 
           param("Publish topic", m_args.publish_topic)
-          .defaultValue("toServer")
+          .defaultValue("toVeichle")
           .description("MQTT Publish topic");
 
           param("ClientID", m_args.client_id)
@@ -119,17 +106,27 @@ namespace Transports
           param("QOS", m_args.QOS)
           .defaultValue("1")
           .description("MQTT Quality of service");
-
-          //
-          // mqtt_client = new mqtt::async_client(adr_string + ":" + std::to_string(m_args.port), m_args.client_id); //TODO: Find a better way to do this without memory allocation
-          // mqtt_client = new mqtt::async_client("tcp://localhost:2023", m_args.client_id); //TODO: Find a better way to do this without memory allocation
         }
 
-        ~Task(void)
+        //! Update internal state with new parameter values.
+        void
+        onUpdateParameters(void)
         {
-          onResourceRelease();
         }
 
+        //! Reserve entity identifiers.
+        void
+        onEntityReservation(void)
+        {
+        }
+
+        //! Resolve entity names.
+        void
+        onEntityResolution(void)
+        {
+        }
+
+        //! Acquire resources.
         void
         onResourceAcquisition(void)
         {
@@ -157,6 +154,13 @@ namespace Transports
           }
         }
 
+        //! Initialize resources.
+        void
+        onResourceInitialization(void)
+        {
+        }
+
+        //! Release resources.
         void
         onResourceRelease(void)
         {
@@ -174,84 +178,83 @@ namespace Transports
                 mqtt_client->disconnect()->wait();
                 delete mqtt_client;
               }
-
-               
           }
-        catch (std::runtime_error& e)
+          catch (std::runtime_error& e)
           {
             //throw RestartNeeded(e.what(), 5);
           }
-          
-          m_parser.reset();
         }
 
+        //! Main loop.
         void
-        onDataTransmission(const uint8_t* p, unsigned int len)
+        onMain(void)
         {
-          //inf(DTR("On data transmission" ));
-          try
-          {
-            mqtt::message_ptr pubmsg = mqtt::make_message(m_args.publish_topic, p, len);
-            pubmsg->set_qos(m_args.QOS);
-             //inf("Requesting to send");
-             
-            mqtt_client->publish(pubmsg)->wait_for(timeout);
-          }
-          catch (std::exception& e)
-          {
-            err(DTR("Transmission fail" ));
-            throw RestartNeeded(e.what(), 5);
-          }
-        }
 
-        void
-        onDataReception(uint8_t* p, unsigned int n, double timeout)
-        {
-          (void) timeout;
+          //Create IMC message
+              IMC::PlanControl planControl;
+        
 
-          auto msg = mqtt_client->consume_message();
-			    if (!msg) return;
-			    inf(DTR("Receiving message" ));
-          unsigned int n_r;
-           
+              planControl.setTimeStamp(1.605363910147E9);
+              planControl.setSource(65535);
+              planControl.setSourceEntity(255);
+              planControl.setDestination(26);  //26
+              planControl.setDestinationEntity(46); //46
+              planControl.plan_id = "s";
+              planControl.flags = 0;
+              planControl.op = 0;
+              planControl.arg = {};
 
-          try
-          {
-            if(msg->get_topic() == m_args.subscribe_topic){
+            /*  "timestamp": 1.605363910147E9,
+  "src": 0,
+  "src_ent": 0,
+  "dst": 65535,
+  "dst_ent": 255,
+  "type": 0,
+  "op": 0,
+  "request_id": 0,
+  "plan_id": "s",
+  "flags": 0,
+  "arg": {},
+  "info": "" */
 
-              //Print topic
-              std::string topic_inf = "Topic is ";
-              topic_inf.append(msg->get_topic());
-              inf(topic_inf.c_str());
-            
-              p = (uint8_t*) msg->get_payload().data();
-              n_r = msg->get_payload().size();
+            planControl.toText(std::cout);
+  
 
-              for (int i = 0; i < n_r; i++)
+
+            unsigned int n = planControl.getSerializationSize();
+
+            m_buf.grow(n);
+
+            uint8_t* p = m_buf.getBuffer();
+
+            IMC::Packet::serialize(&planControl, p, n);
+
+            //Print serialized
+            /*for (int i = 0; i < n; i++)
               {
                 inf("%x", p[i]);
-              }
-              inf("length: %d", n_r);
+              }*/
 
-              if (n_r > n)
-              {
-                err("MQTT Message length is longer than array for data reception"); 
-              }
 
+            //send message  
+            try
+            {
+              mqtt::message_ptr pubmsg = mqtt::make_message(m_args.publish_topic, p, n);
+              pubmsg->set_qos(m_args.QOS);
+              mqtt_client->publish(pubmsg)->wait_for(timeout);
             }
-            else{
-              inf(DTR("Topic of no interrest" ));
-              
-              return; 
+            catch (std::exception& e)
+            {
+              err(DTR("Transmission fail" ));
+              throw RestartNeeded(e.what(), 5);
             }
-          }
-          catch (std::exception& e)
+
+
+          while (!stopping())
           {
-            throw RestartNeeded(e.what(), 5);
+            
+            waitForMessages(1.0);
           }
-
-          if (n_r > 0)
-            handleData(m_parser, (uint8_t*)p, n_r);
         }
       };
     }
