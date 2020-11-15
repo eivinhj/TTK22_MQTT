@@ -43,15 +43,8 @@ namespace Transports
     {
       using DUNE_NAMESPACES;
 
-            //test
-      const std::string DEFAULT_SERVER_ADDRESS	{ "tcp://localhost:2312" }; //TODO Change this for server
-      const std::string DEFAULT_CLIENT_ID		    { "client 1"};
-
-
-
 	    mqtt::connect_options conn_opts;
-      //mqtt::async_client mqtt_client_test(DEFAULT_SERVER_ADDRESS, DEFAULT_CLIENT_ID	);
-      mqtt::async_client* mqtt_client; // = &mqtt_client_test;
+      mqtt::async_client* mqtt_client;
       auto timeout = std::chrono::seconds(10);
 
        struct Arguments
@@ -67,8 +60,8 @@ namespace Transports
         unsigned int sourceEntity;  //IMC Source
         unsigned int destination;  //IMC Source
         unsigned int destinationEntity;  //IMC Source
-        std::string planId;
-        unsigned int planOp;
+        std::string planId; //IMC Plan ID
+        unsigned int planOp; //IMC Plan Op
       };
 
       struct Task: public DUNE::Tasks::Task
@@ -77,8 +70,11 @@ namespace Transports
         Arguments m_args;
         // Parser handle.
         IMC::Parser m_parser;
+
+        //Buffers
         DUNE::Utils::ByteBuffer m_buf;
         DUNE::Utils::ByteBuffer m_buf_receive;
+
         //! Constructor.
         //! @param[in] name task name.
         //! @param[in] ctx context.
@@ -168,8 +164,9 @@ namespace Transports
           inf(adr_string.c_str());
           mqtt_client = new mqtt::async_client(adr_string, m_args.client_id);
 
-          conn_opts.set_keep_alive_interval(200); //MQTT?
-	        conn_opts.set_clean_session(true);     //MQTT?
+          conn_opts.set_keep_alive_interval(200); 
+	        conn_opts.set_clean_session(true); 
+
           try
           {
             mqtt_client->connect(conn_opts)->wait();
@@ -196,7 +193,7 @@ namespace Transports
         onResourceRelease(void)
         {
           inf(DTR("onResourceRelease"));
-          //TODO Disconnect
+          
           try{
               if (mqtt_client)
               {
@@ -212,7 +209,7 @@ namespace Transports
           }
           catch (std::runtime_error& e)
           {
-            //throw RestartNeeded(e.what(), 5);
+            throw RestartNeeded(e.what(), 5);
           }
         }
 
@@ -310,24 +307,21 @@ namespace Transports
 
               if (n_r_receive > 0)
                 //extract message
-
-                
-              for (const uint8_t* e = p_receive + n_r_receive; p_receive != e; ++p_receive)
               {
-                IMC::Message* m = m_parser.parse(*p_receive);
-
-                if (m)
+                
+                for (const uint8_t* e = p_receive + n_r_receive; p_receive != e; ++p_receive)
                 {
-                  //dispatch(m, DF_KEEP_TIME | DF_KEEP_SRC_EID);
+                  IMC::Message* m = m_parser.parse(*p_receive);
 
-                  //if (m_gargs.trace_in)
-                  //  inf(DTR("incoming: %s"), m->getName());
-                  m->toText(std::cout);
+                  if (m)
+                  {
+                    //Print message to console
+                    m->toText(std::cout);
 
-                  delete m;
+                    delete m;
+                  }
                 }
               }
-
 
 
 

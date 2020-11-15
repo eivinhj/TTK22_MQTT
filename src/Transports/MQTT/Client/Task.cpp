@@ -55,18 +55,9 @@ namespace Transports
     {
       using DUNE_NAMESPACES;
 
-      //test
-      const std::string DEFAULT_SERVER_ADDRESS	{ "tcp://localhost:2312" }; //TODO Change this for server
-      const std::string DEFAULT_CLIENT_ID		    { "client 1"};
-
-
-
 	    mqtt::connect_options conn_opts;
-      //mqtt::async_client mqtt_client_test(DEFAULT_SERVER_ADDRESS, DEFAULT_CLIENT_ID	);
-      mqtt::async_client* mqtt_client; // = &mqtt_client_test;
+      mqtt::async_client* mqtt_client; 
       auto timeout = std::chrono::seconds(10);
-
-
 
       struct Arguments
       {
@@ -120,9 +111,6 @@ namespace Transports
           .defaultValue("1")
           .description("MQTT Quality of service");
 
-          //
-          // mqtt_client = new mqtt::async_client(adr_string + ":" + std::to_string(m_args.port), m_args.client_id); //TODO: Find a better way to do this without memory allocation
-          // mqtt_client = new mqtt::async_client("tcp://localhost:2023", m_args.client_id); //TODO: Find a better way to do this without memory allocation
         }
 
         ~Task(void)
@@ -134,16 +122,21 @@ namespace Transports
         onResourceAcquisition(void)
         {
           inf(DTR("connecting to MQTT broker"));
+
+          //Concatenate adress and port
           std::string adr_string(m_args.address.c_str()); 
           adr_string.append(":");
           adr_string.append(std::to_string(m_args.port));
           inf(adr_string.c_str());
+
+          //Create mqtt_client instance
           mqtt_client = new mqtt::async_client(adr_string, m_args.client_id);
 
-          conn_opts.set_keep_alive_interval(200); //MQTT?
-	        conn_opts.set_clean_session(true);     //MQTT?
+          conn_opts.set_keep_alive_interval(200); 
+	        conn_opts.set_clean_session(true);     
           try
           {
+            //Connect and subscribe to topic
             mqtt_client->connect(conn_opts)->wait();
 		        mqtt_client->start_consuming();
 		        mqtt_client->subscribe(m_args.subscribe_topic, m_args.QOS)->wait();
@@ -167,7 +160,7 @@ namespace Transports
               {
                 auto toks = mqtt_client->get_pending_delivery_tokens();
                 if (!toks.empty())
-                inf(DTR("Error: There are pending MQTT delivery tokens!" ));
+                err(DTR("Error: There are pending MQTT delivery tokens!" ));
                 
                 mqtt_client->unsubscribe(m_args.subscribe_topic)->wait();
                 mqtt_client->stop_consuming();
@@ -179,7 +172,7 @@ namespace Transports
           }
         catch (std::runtime_error& e)
           {
-            //throw RestartNeeded(e.what(), 5);
+            throw RestartNeeded(e.what(), 5);
           }
           
           m_parser.reset();
@@ -188,18 +181,16 @@ namespace Transports
         void
         onDataTransmission(const uint8_t* p, unsigned int len)
         {
-          //inf(DTR("On data transmission" ));
           try
           {
             mqtt::message_ptr pubmsg = mqtt::make_message(m_args.publish_topic, p, len);
             pubmsg->set_qos(m_args.QOS);
-             //inf("Requesting to send");
              
             mqtt_client->publish(pubmsg)->wait_for(timeout);
           }
           catch (std::exception& e)
           {
-            err(DTR("Transmission fail" ));
+            err(DTR("Transmission failiure" ));
             throw RestartNeeded(e.what(), 5);
           }
         }
@@ -227,15 +218,9 @@ namespace Transports
               p = (uint8_t*) msg->get_payload().data();
               n_r = msg->get_payload().size();
 
-              for (int i = 0; i < n_r; i++)
-              {
-                inf("%x", p[i]);
-              }
-              inf("length: %d", n_r);
-
               if (n_r > n)
               {
-                err("MQTT Message length is longer than array for data reception"); 
+                err("MQTT Message length is longer than data reception buffer"); 
               }
 
             }
