@@ -67,8 +67,10 @@ mosquitto -v -p 2023
 
 Navigate to dune/build folder.
 
-Build with make rebuild_cache &amp;&amp; make
-
+Build with 
+```
+make rebuild_cache && make
+```
 Run noptilus simulator:
 
 ```
