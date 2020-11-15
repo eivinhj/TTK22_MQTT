@@ -72,6 +72,7 @@ namespace Transports
         // Parser handle.
         IMC::Parser m_parser;
         DUNE::Utils::ByteBuffer m_buf;
+        DUNE::Utils::ByteBuffer m_buf_receive;
         //! Constructor.
         //! @param[in] name task name.
         //! @param[in] ctx context.
@@ -189,6 +190,8 @@ namespace Transports
         void
         onMain(void)
         {
+            uint8_t* p_receive;
+            unsigned int n_r_receive;
 
           //Create IMC message
               IMC::PlanControl planControl;
@@ -203,19 +206,6 @@ namespace Transports
               planControl.flags = 0;
               planControl.op = 0;
               planControl.arg = {};
-
-            /*  "timestamp": 1.605363910147E9,
-  "src": 0,
-  "src_ent": 0,
-  "dst": 65535,
-  "dst_ent": 255,
-  "type": 0,
-  "op": 0,
-  "request_id": 0,
-  "plan_id": "s",
-  "flags": 0,
-  "arg": {},
-  "info": "" */
 
             planControl.toText(std::cout);
   
@@ -249,13 +239,72 @@ namespace Transports
               throw RestartNeeded(e.what(), 5);
             }
 
-
           while (!stopping())
           {
             
             waitForMessages(1.0);
+            auto msg = mqtt_client->consume_message();
+			      if (msg)
+            {
+            inf(DTR("Receiving message" ));
+                unsigned int n_receive;
+                
+
+              try
+              {
+                if(msg->get_topic() == m_args.subscribe_topic)
+                {
+
+                  //Print topic
+                  std::string topic_inf = "Topic is ";
+                  topic_inf.append(msg->get_topic());
+                  inf(topic_inf.c_str());
+
+
+                  n_r_receive = msg->get_payload().size();
+                  
+                p_receive = (uint8_t*) msg->get_payload().data();
+
+                }
+                else{
+                    inf(DTR("Topic of no interrest" ));
+                }
+              }
+              catch (std::exception& e)
+              {
+                  throw RestartNeeded(e.what(), 5);
+              }
+
+              if (n_r_receive > 0)
+                //extract message
+
+                
+              for (const uint8_t* e = p_receive + n_r_receive; p_receive != e; ++p_receive)
+              {
+                IMC::Message* m = m_parser.parse(*p_receive);
+
+                if (m)
+                {
+                  //dispatch(m, DF_KEEP_TIME | DF_KEEP_SRC_EID);
+
+                  //if (m_gargs.trace_in)
+                  //  inf(DTR("incoming: %s"), m->getName());
+                  m->toText(std::cout);
+
+                  delete m;
+                }
+              }
+
+
+
+
+
+
+
+            }
+			    
           }
-        }
+          }
       };
     }
   }
