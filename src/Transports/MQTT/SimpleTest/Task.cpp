@@ -63,6 +63,12 @@ namespace Transports
         std::string client_id;
         std::string lwt_payload; //Last will testament payload
         int  QOS; //Quality of service
+        unsigned int source;  //IMC Source
+        unsigned int sourceEntity;  //IMC Source
+        unsigned int destination;  //IMC Source
+        unsigned int destinationEntity;  //IMC Source
+        std::string planId;
+        unsigned int planOp;
       };
 
       struct Task: public DUNE::Tasks::Task
@@ -107,6 +113,30 @@ namespace Transports
           param("QOS", m_args.QOS)
           .defaultValue("1")
           .description("MQTT Quality of service");
+
+          param("IMC Source", m_args.source)
+          .defaultValue("65535")
+          .description("IMC Source");
+
+          param("IMC Source Entity", m_args.sourceEntity)
+          .defaultValue("255")
+          .description("IMC Source Entity");
+
+          param("IMC Destination", m_args.destination)
+          .defaultValue("26")
+          .description("IMC Destination");
+
+          param("IMC Destination Entity", m_args.destinationEntity)
+          .defaultValue("46")
+          .description("IMC Destination Entity");
+
+          param("IMC PlanID", m_args.planId)
+          .defaultValue("s")
+          .description("IMC PlanID to start");
+
+          param("IMC PlanOP", m_args.planOp)
+          .defaultValue("0")
+          .description("IMC PlanOperation");
         }
 
         //! Update internal state with new parameter values.
@@ -190,36 +220,32 @@ namespace Transports
         void
         onMain(void)
         {
+            //Variable declarations
             uint8_t* p_receive;
             unsigned int n_r_receive;
 
-          //Create IMC message
+          //Create IMC PlanControl message
               IMC::PlanControl planControl;
-        
-
               planControl.setTimeStamp(1.605363910147E9);
-              planControl.setSource(65535);
-              planControl.setSourceEntity(255);
-              planControl.setDestination(26);  //26
-              planControl.setDestinationEntity(46); //46
-              planControl.plan_id = "s";
+              planControl.setSource(m_args.source);
+              planControl.setSourceEntity(m_args.sourceEntity);
+              planControl.setDestination(m_args.destination);  //26
+              planControl.setDestinationEntity(m_args.destinationEntity); //46
+              planControl.plan_id = m_args.planId;
               planControl.flags = 0;
-              planControl.op = 0;
+              planControl.op = m_args.planOp;
               planControl.arg = {};
 
+            //Print Plan to terminal
             planControl.toText(std::cout);
   
-
-
+            //Serialize message and place in buffer
             unsigned int n = planControl.getSerializationSize();
-
             m_buf.grow(n);
-
             uint8_t* p = m_buf.getBuffer();
-
             IMC::Packet::serialize(&planControl, p, n);
 
-            //Print serialized
+            //Print serialized in hex
             /*for (int i = 0; i < n; i++)
               {
                 inf("%x", p[i]);
@@ -239,19 +265,26 @@ namespace Transports
               throw RestartNeeded(e.what(), 5);
             }
 
+            delete p;
+
+
+
           while (!stopping())
           {
             
             waitForMessages(1.0);
+
+            //Extract new message
             auto msg = mqtt_client->consume_message();
 			      if (msg)
             {
             inf(DTR("Receiving message" ));
-                unsigned int n_receive;
+              unsigned int n_receive;
                 
 
               try
               {
+                //Make sure the topic is the requested topic
                 if(msg->get_topic() == m_args.subscribe_topic)
                 {
 
